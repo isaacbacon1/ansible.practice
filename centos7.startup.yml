@@ -1,0 +1,10 @@
+---
+# ~/projects/ansible.practice/centos7.startup.yml
+
+- name: Configuration de base de CentOS 7
+  hosts: centos7.local
+  remote_user: isaac.bacon
+  gather_facts: yes
+
+  roles:
+    - init

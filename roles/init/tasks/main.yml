@@ -1,0 +1,127 @@
+---
+# ~/project/ansible.practice/roles/init/tasks/main.yml
+
+
+ Change the root password for safety measures
+- name: Change root password
+  user:
+    name: root
+    password: ro8kU6gwWi.4I
+    update_password: always
+  become: yes
+
+# Make SSH unavailable for user root
+- name: Make sure no other PermitRootLogin yes lines exist
+  lineinfile:
+    dest: /etc/ssh/sshd_config
+    line: "PermitRootLogin yes"
+    state: absent
+  become: yes
+
+- name: Insert PermitRootLogin no
+  lineinfile:
+    dest: /etc/ssh/sshd_config
+    line: "PermitRootLogin no"
+    insertafter: "^#LoginGraceTime 2m"
+  become: yes
+
+# Create a new sudoer user
+- name: Delete admin user if exists
+  user:
+    name: admin
+    state: absent
+    force: yes
+  become: yes
+
+- name: Create admin user
+  user:
+    name: admin
+    password: "*"
+    update_password: always
+    group: wheel
+  become: yes
+
+- name: Create .ssh directory for admin user
+  file:
+    path: /home/admin/.ssh
+    state: directory
+    owner: admin
+    mode: 0700
+  become: yes
+
+- name: Copy admin public key to server
+  copy:
+    src: files/admin/id_rsa.pub
+    dest: /home/admin/.ssh
+  become: yes
+
+- name: Add pub key for admin
+  authorized_key:
+    user: admin
+    key: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
+    manage_dir: yes
+    state: present
+  become: yes
+
+- name: Create .ssh directory for user-centos user
+  file:
+    path: /home/user-centos/.ssh
+    state: directory
+    owner: user-centos
+    mode: 0700
+  become: yes
+
+- name: Copy user-centos public key to server
+  copy:
+    src: files/user-centos/id_rsa.pub
+    dest: /home/user-centos/.ssh
+  become: yes
+
+- name: Add pub key for admin
+  authorized_key:
+    user: user-centos
+    key: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
+    manage_dir: yes
+    state: present
+  become: yes
+
+  # Add firewall rules
+
+- name: Install iptable
+  yum:
+    name: iptables
+    state: present
+    update_cache: yes
+  become: yes
+  become: yes
+
+  # Create a new non-sudoer user
+- name: Delete user-centos if exists
+  user:
+    name: user-centos
+    state: absent
+    force: yes
+  become: yes
+
+- name: Create user-centos user
+  user:
+    name: user-centos
+    password: "*"
+    update_password: always
+
+  # Install and create iptables rules
+- name: Clear iptables configurations
+  shell: iptables -F
+  become: yes
+
+- name: Add ssh port to firewall
+  shell: iptables -A INPUT -p tcp -m tcp --dport 22 -j ACCEPT
+  become: yes
+
+- name: Add http port to firewall
+  shell: iptables -A INPUT -p tcp -m tcp --dport 80 -j ACCEPT
+  become: yes
+
+- name: Add SSL port to firewall
+  shell: iptables -A INPUT -p tcp -m tcp --dport 443 -j ACCEPT
+  become: yes
